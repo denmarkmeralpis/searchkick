@@ -55,13 +55,31 @@ module Searchkick
     @client ||= begin
       require "typhoeus/adapters/faraday" if defined?(Typhoeus) && Gem::Version.new(Faraday::VERSION) < Gem::Version.new("0.14.0")
 
-      Elasticsearch::Client.new({
-        url: ENV["ELASTICSEARCH_URL"],
-        transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
-        retry_on_failure: 2
-      }.deep_merge(client_options)) do |f|
-        f.use Searchkick::Middleware
-        f.request signer_middleware_key, signer_middleware_aws_params if aws_credentials
+      if ENV['ELASTICSEARCH_CUSTOM'].to_s == 'true'
+        Elasticsearch::Client.new({
+          host: ENV['ELASTICSEARCH_HOST'],
+          port: ENV['ELASTICSEARCH_PORT'],
+          user: ENV['ELASTICSEARCH_USER'],
+          password: ENV['ELASTICSEARCH_PASSWORD'],
+          scheme: ENV['ELASTICSEARCH_SCHEME'],
+          transport_options: { 
+            request: { timeout: timeout },
+            headers: { content_type: 'application/json' }
+          },
+          retry_on_failure: 2 
+        }.deep_merge(client_options)) do |f|
+          f.use Searchkick::Middleware
+          f.request signer_middleware_key, signer_middleware_aws_params if aws_credentials
+        end
+      else
+        Elasticsearch::Client.new({
+          url: ENV["ELASTICSEARCH_URL"],
+          transport_options: {request: {timeout: timeout}, headers: {content_type: "application/json"}},
+          retry_on_failure: 2
+        }.deep_merge(client_options)) do |f|
+          f.use Searchkick::Middleware
+          f.request signer_middleware_key, signer_middleware_aws_params if aws_credentials
+        end
       end
     end
   end
